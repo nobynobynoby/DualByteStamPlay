@@ -55,13 +55,14 @@ enum ButtonState {
   BUTTON_RELEASED_NOW = 3 // 離された（今回離された瞬間）
 };
 
-char lastKey = 0; // 直近で押されたキー（CardKBから取得）
-
 // --- Forward Declarations (arpeggioTaskで使用するため) ---
 void sendControlChange(uint8_t channel, uint8_t control, uint8_t value);
 void sendProgramChange(uint8_t channel, uint8_t program);
 void sendMidiNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void sendMidiNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
+void updateByteButtonLEDs();
+void updateByteButton2LEDs();
+void updateRandomLEDs();
 
 // M5StampS3のGROVE端子ピン配置を確認
 #define GROVE_TX 2   // Grove TX (白線)
@@ -76,6 +77,7 @@ int currentKey = 0;     // 現在のキー (0: C/Am)
 int currentDegree = 1;  // 現在のコード (1: I)
 int currentSemitone = 0; // 現在の半音(-1:flat)
 bool currentSwap = false; // 現在のスワップ状態
+KANTANMusic_Modifier currentModifier = KANTANMusic_Modifier_None;
 KANTANMusic_GetMidiNoteNumberOptions options; // KANTAN Music APIのオプション設定
 
 int pastKey = 0; // 直前のキー（押されたキー）
@@ -265,6 +267,89 @@ void allNotesOff() {
   sendControlChange(1, 123, 0);
 }
 
+// ByteButton1のLED制御
+void updateByteButtonLEDs() {
+  // currentKeyに基づいてLEDを設定
+  // currentKey: 0,1,2,3,4,5,6,7,8,9,10,11
+  // LED点灯:    7,6,6,5,5,4,3,3,2,2,1,1
+  const int keyToLED[12] = {7, 6, 6, 5, 5, 4, 3, 3, 2, 2, 1, 1};
+  
+  // 全LEDを初期化（消灯）
+  for (int i = 0; i < 8; i++) {
+    buttonDevice1.setRGB888(i, 0x000000); // 消灯
+  }
+  
+  // currentKeyに対応するLEDを点灯
+  int ledToLight = keyToLED[currentKey % 12];
+  if (ledToLight >= 1 && ledToLight <= 7) {
+    if (currentSwap) {
+      // swapがtrueの場合、元のLEDは緑のまま、他のLEDを赤に点灯
+      buttonDevice1.setRGB888(ledToLight, 0x00FF00); // 元のLEDは緑色のまま
+      for (int i = 1; i <= 7; i++) {
+        if (i != ledToLight) {
+          buttonDevice1.setRGB888(i, 0xFF0000); // 他のLEDは赤色
+        }
+      }
+    } else {
+      // swapがfalseの場合、対応するLEDのみ点灯
+      buttonDevice1.setRGB888(ledToLight, 0x00FF00); // 緑色
+    }
+  }
+  
+  // LED0の制御（currentKeyが1,3,6,8,10の時に黄色）
+  if (currentKey == 1 || currentKey == 3 || currentKey == 6 || currentKey == 8 || currentKey == 10) {
+    buttonDevice1.setRGB888(0, 0xFFFF00); // 黄色
+  } else {
+    buttonDevice1.setRGB888(0, 0x000000); // 消灯
+  }
+}
+
+// ByteButton2のLED制御
+void updateByteButton2LEDs() {
+  // 全LEDを初期化（消灯）
+  for (int i = 0; i < 8; i++) {
+    buttonDevice2.setRGB888(i, 0x000000); // 消灯
+  }
+  
+  // reserveNoteTone (0-5) に対応するLEDを青色で点灯
+  if (reserveNoteTone >= 0 && reserveNoteTone <= 5) {
+    buttonDevice2.setRGB888(reserveNoteTone, 0x0000FF); // 青色
+  }
+  
+  // LED6の制御（currentSemitoneに基づく）
+  if (currentSemitone == -1) {
+    buttonDevice2.setRGB888(6, 0xFFFF00); // 黄色
+  } else if (currentSemitone == 0) {
+    buttonDevice2.setRGB888(6, 0x000000); // 消灯
+  } else if (currentSemitone == 1) {
+    buttonDevice2.setRGB888(6, 0xFF0000); // 赤色
+  }
+  
+  // LED7の制御（currentModifierに基づく）
+  if (currentModifier == KANTANMusic_Modifier_None) {
+    buttonDevice2.setRGB888(7, 0x000000); // 消灯
+  } else {
+    buttonDevice2.setRGB888(7, 0x00FF00); // 緑色
+  }
+}
+
+// 14個のLEDをランダムカラーで点灯
+void updateRandomLEDs() {
+  for (int i = 0; i < NUM_LEDS; i++) {
+    // ランダムな色相（0-255）、高い彩度（255）、適度な明度（150）
+    leds[i] = CHSV(random(256), 255, 150);
+  }
+  FastLED.show();
+}
+
+// 14個のLEDを消灯
+void clearRandomLEDs() {
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CRGB::Black;
+  }
+  FastLED.show();
+}
+
 void kantanPlay(){
   // 直前のコードをオフ
   kantanNoteOff(pastDegree, pastKey, &pastOptions);
@@ -273,8 +358,12 @@ void kantanPlay(){
   options.voicing = gm_programs[currentNoteTone].voicing; // Voicingを設定
   options.semitone_shift = currentSemitone; // 半音シフトを適用
   options.minor_swap = currentSwap; // マイナー・スワップを適用
+  options.modifier = currentModifier; // モディファイアを適用
   kantanNoteOn(currentDegree, currentKey, &options,
                gm_programs[currentNoteTone].fourVoice); // 4音色かどうかを指定
+
+  // コード演奏開始時にランダムLED点灯
+  updateRandomLEDs();
 
   pastDegree = currentDegree; // 現在のコードを記録
   pastKey = currentKey;       // 現在のキーを記録
@@ -487,6 +576,18 @@ void loop() {
     noteOn = true;
   }
 
+  // ボタン7～1が離された時の処理
+  bool noteOff = false;
+  if(buttonStates1Enum[7] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[6] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[5] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[4] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[3] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[2] == BUTTON_RELEASED_NOW ||
+     buttonStates1Enum[1] == BUTTON_RELEASED_NOW) {
+    noteOff = true;
+  }
+
   if(buttonStates1Enum[0] == BUTTON_HELD) {
     currentSwap = true;
   }else{
@@ -499,8 +600,25 @@ void loop() {
     currentSemitone = 0;
   }
 
+  currentModifier = KANTANMusic_Modifier_None;
+  if(buttonStates2Enum[1] == BUTTON_HELD) {
+    if(buttonStates2Enum[2] == BUTTON_HELD){
+      currentModifier = KANTANMusic_Modifier_7sus4;
+    }else if(buttonStates2Enum[3] == BUTTON_HELD) {
+      currentModifier = KANTANMusic_Modifier_dim7;
+    }else{
+      currentModifier = KANTANMusic_Modifier_7;
+    }
+  }else{
+    if(buttonStates2Enum[2] == BUTTON_HELD) {
+      currentModifier = KANTANMusic_Modifier_sus4;
+    } else if(buttonStates2Enum[3] == BUTTON_HELD) {
+      currentModifier = KANTANMusic_Modifier_dim;
+    }
+  }
+
   if(buttonStates2Enum[4] == BUTTON_PRESSED) {
-    reserveNoteTone = (reserveNoteTone - 1) % 6;
+    reserveNoteTone = (reserveNoteTone - 1 + 6) % 6;
   }
 
   if(buttonStates2Enum[5] == BUTTON_PRESSED) {
@@ -508,7 +626,7 @@ void loop() {
   }
 
   if(buttonStates2Enum[6] == BUTTON_PRESSED) {
-    currentKey = (currentKey - 1) % 12;
+    currentKey = (currentKey - 1 + 12) % 12;
   }
 
   if(buttonStates2Enum[7] == BUTTON_PRESSED) {
@@ -525,5 +643,15 @@ void loop() {
     // コード演奏
     kantanPlay();
   }
+  
+  // ボタンが離された時にLEDを消灯
+  if (noteOff) {
+    clearRandomLEDs();
+  }
+  
+  // ByteButton1とByteButton2のLEDを更新
+  updateByteButtonLEDs();
+  updateByteButton2LEDs();
+  
   delay(10); // ループ間隔
 }

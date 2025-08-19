@@ -1,11 +1,20 @@
-# DualByteStamPlay - KANTAN Music Digital Instrument
+# DualByteStamPlay  
+unofficial fan-made project inspired by “KANTAN Play”
 
+## 重要事項
+
+本プロジェクトはKANTAN Play/InstaChordにインスパイアされたプロジェクトです。
+InstaChord株式会社、およびkantan-music公式プロジェクトではありません
+
+
+## 概要
 M5StampS3を使用したデジタル楽器プロジェクトです。2つのM5Unit-ByteButtonとMIDI音源ボードを組み合わせて、直感的な音楽演奏システムを構築しています。
+M5社の各種パーツを使用しており、はんだ付け不要でくみ上げることが可能です。
 
 ## 主な機能
 
 ### 🎵 KANTAN Music API統合
-- コード理論に基づいた音楽生成
+- コード理論に基づいた音楽生成(KANTAN Music API使用)
 - 6つのGM音色（ギター、ピアノ、オルガン、ストリングス等）
 - リアルタイムアルペジオ演奏（FreeRTOSタスク使用）
 - 自動ボイシング（ギター/スタティック）
@@ -13,23 +22,16 @@ M5StampS3を使用したデジタル楽器プロジェクトです。2つのM5Un
 ### 🎮 デュアルボタンコントロール
 **ByteButton1（表面）- コード演奏**
 - ボタン7～1: I, II, III, IV, V, VI, VII（ディグリー）
-- ボタン0: マイナースワップ（長押し）
+- ボタン0: メジャー/マイナースワップ
 
 **ByteButton2（裏面）- モディファイア**
-- ボタン0: フラット（長押し）
-- ボタン1-3: 将来拡張用（7th, Sus4, Dim）
-- ボタン4-5: 音色変更（PC-, PC+）
-- ボタン6-7: キー変更（Key-, Key+）
+- ボタン0: フラット
+- ボタン1-3: コード修飾（7th, Sus4, Dim）
+- ボタン4-5: 音色変更
+- ボタン6-7: キー変更
 
-### 🔧 高度な機能
-- **デバウンス処理**: 20msの安定化でボタンのチャタリングを防止
-- **4状態ボタン検出**: 押下瞬間/押下継続/離した瞬間/未押下
-- **非同期アルペジオ**: バックグラウンドタスクで遅延なし演奏
-- **自動Note Off**: 6秒後の自動消音タイマー
-
-### 💡 LED制御
-- **G7**: 14個のLEDアレイ（NEOPIXEL）
-- **G21**: WS2812 LEDストリップ（起動時RGB テスト）
+### 🎸 ストロークタイムの変化
+- ギターの弦をゆっくりはじくような演奏をアナログスライダーにより実現
 
 ## ハードウェア構成
 
@@ -42,26 +44,9 @@ M5StampS3を使用したデジタル楽器プロジェクトです。2つのM5Un
 | **Unit Synth (SAM2695)** | MIDI音源。MIDI信号を受けて音声出力。 | Grove端子（TX:GPIO2, RX:GPIO1）<br>標準MIDIボーレート:31250bps | [公式](https://docs.m5stack.com/en/unit/Unit-Synth) |
 | **Unit Fader** | アナログスライダー。ストロークタイム調整用。SK6812 LED搭載。 | G9:アナログ入力<br>LEDは独立制御 | [公式](https://docs.m5stack.com/en/unit/fader) |
 | **StampS3 Grove BreakOut** | Grove端子拡張・電源供給。各ユニットの接続基板。 | StampS3に直結 | [公式](https://docs.m5stack.com/en/accessory/StampS3%20GroveBreakOut) |
-| **LEDアレイ（G7）** | 14個のNEOPIXEL。演奏状態やエフェクト表示。 | G7ピンに接続 |  |
-| **WS2812 LED（G21）** | 起動時のRGBテストや状態表示。 | G21ピンに接続 |  |
 
-#### ピン配置まとめ
-```
-I2C通信:
-  SDA: GPIO13
-  SCL: GPIO15
 
-MIDI出力:
-  TX: GPIO2 (Grove TX)
-  RX: GPIO1 (Grove RX)
 
-LED制御:
-  G7:  NEOPIXEL（14個）
-  G21: WS2812 LED
-
-アナログ入力:
-  G9:  Unit Fader（ストロークタイム調整）
-```
 
 #### 各ユニットの使い方
 - **ByteButton（表面）**: コード演奏（I, II, III...）やマイナー化（長押し）
@@ -152,33 +137,18 @@ pio device monitor --environment m5stack-stamps3
 - **Platform**: ESP32 (espressif32)
 - **Framework**: Arduino
 - **Build System**: PlatformIO
-- **Upload Speed**: 921600 bps
-- **Monitor Speed**: 115200 bps
 
-## トラブルシューティング
-
-### リセット後の自動実行問題
-```cpp
-// USB CDC接続タイムアウト（3秒）で解決済み
-while (!Serial && (millis() - start < 3000)) {
-    delay(10);
-}
-```
-
-### LED点灯しない場合
-- WS2812: `<WS2812, LED_PIN, GRB>` 形式を確認
-- 電源供給とピン接続を確認
-
-### MIDI音源が鳴らない場合
-- Grove端子の配線確認（TX=GPIO2, RX=GPIO1）
-- ボーレート31250設定確認
-- MIDI音源ボードの電源確認
-- 音源ボードの音量設定確認
-- スピーカー/ヘッドフォンの接続確認
 
 ## ライセンス
 
 このプロジェクトにはKANTAN Music APIが含まれています。詳細は`kantan-music/LICENSE_KANTAN_MUSIC.md`を参照してください。
+
+KANTAN Music APIの元プロジェクト: [InstaChord/KANTAN_Play_core](https://github.com/InstaChord/KANTAN_Play_core)
+
+上記以外のライセンスはMITライセンス準拠です。
+
+[MIT License (LICENSEファイル)](./LICENSE)
+
 
 ## 関連製品ドキュメント
 
