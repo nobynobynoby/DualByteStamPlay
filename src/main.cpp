@@ -543,7 +543,7 @@ void loop() {
   // ByteButton1(Front)
   // 7:I 6:II 5:III 4:IV 3:V 2:VI 1:VII 0:Swap
   // ByteButton2(Back)
-  // 0:flat 1:7 2:Sus4 3:Dim 4:PC- 5:PC+ 6:Key- 7:Key+
+  // 0:7th 1:flat 2:Dim 3:sus4 4:PC- 5:PC+ 6:Key- 7:Key+
   // いったん同時押しは考えない
   bool noteOn = false;
   bool partSemtone = false;
@@ -594,25 +594,25 @@ void loop() {
     currentSwap = false; 
   }
 
-  if(buttonStates2Enum[0] == BUTTON_HELD) {
+  if(buttonStates2Enum[1] == BUTTON_HELD) {
     currentSemitone = -1;
   }else{
     currentSemitone = 0;
   }
 
   currentModifier = KANTANMusic_Modifier_None;
-  if(buttonStates2Enum[1] == BUTTON_HELD) {
-    if(buttonStates2Enum[2] == BUTTON_HELD){
+  if(buttonStates2Enum[0] == BUTTON_HELD) {
+    if(buttonStates2Enum[3] == BUTTON_HELD){
       currentModifier = KANTANMusic_Modifier_7sus4;
-    }else if(buttonStates2Enum[3] == BUTTON_HELD) {
+    }else if(buttonStates2Enum[2] == BUTTON_HELD) {
       currentModifier = KANTANMusic_Modifier_dim7;
     }else{
       currentModifier = KANTANMusic_Modifier_7;
     }
   }else{
-    if(buttonStates2Enum[2] == BUTTON_HELD) {
+    if(buttonStates2Enum[3] == BUTTON_HELD) {
       currentModifier = KANTANMusic_Modifier_sus4;
-    } else if(buttonStates2Enum[3] == BUTTON_HELD) {
+    } else if(buttonStates2Enum[2] == BUTTON_HELD) {
       currentModifier = KANTANMusic_Modifier_dim;
     }
   }
