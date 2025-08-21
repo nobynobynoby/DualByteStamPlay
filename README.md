@@ -68,7 +68,7 @@ This device follows the chord theory of KANTAN-MUSIC.
 - **ByteButton (Front)**: Chord play (I, II, III...) and minor (hold)
 - **ByteButton (Back)**: Instrument/key change, extended modifiers
 - **Unit Fader**: Adjust stroke time (arpeggio speed)
-- **Unit Synth**: Outputs sound via MIDI. Connect speaker/headphones
+- **Unit Synth**: Outputs sound via MIDI
 - **LEDs**: Show performance state and startup test
 
 <div align="center">
@@ -173,12 +173,6 @@ unofficial fan-made project inspired by "KANTAN Play"
 ## 重要事項
 
 本プロジェクトはKANTAN Play/InstaChordにインスパイアされたプロジェクトです。
-InstaChord株式会社、およびkantan-music公式プロジェクトではありませんyteStamPlay  
-unofficial fan-made project inspired by “KANTAN Play”
-
-## 重要事項
-
-本プロジェクトはKANTAN Play/InstaChordにインスパイアされたプロジェクトです。
 InstaChord株式会社、およびkantan-music公式プロジェクトではありません
 
 
@@ -249,7 +243,7 @@ M5社の各種パーツを使用しており、はんだ付け不要でくみ上
 - **ByteButton（表面）**: コード演奏（I, II, III...）やマイナー化（長押し）
 - **ByteButton（裏面）**: 音色/キー変更、拡張モディファイア
 - **Unit Fader**: ストロークタイム（アルペジオ速度）調整
-- **Unit Synth**: MIDI受信で音声出力。スピーカー/ヘッドフォン接続可
+- **Unit Synth**: MIDI受信で音声出力
 - **LED**: 演奏状態や起動時テスト表示
 
 <div align="center">
