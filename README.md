@@ -1,4 +1,179 @@
 # DualByteStamPlay  
+Unofficial fan-made project inspired by "KANTAN Play"
+
+## Important Notice
+
+This project is inspired by KANTAN Play/InstaChord.
+It is not an official project of InstaChord Inc. or kantan-music.
+
+## Overview
+This is a digital musical instrument project using M5StampS3. By combining two M5Unit-ByteButtons and a MIDI sound board, it creates an intuitive music performance system.
+All parts are from M5Stack and can be assembled without soldering.
+
+## Product Images
+
+<div align="center">
+  <img src="./images/IMG_20250821_192512_1.jpg" alt="DualByteStamPlay Front" width="400" />
+  <img src="./images/IMG_20250821_192525_1.jpg" alt="DualByteStamPlay Back" width="400" />
+</div>
+
+## Usage
+
+### How to Play
+
+This device follows the chord theory of KANTAN-MUSIC.
+
+- **Front buttons 1-7** play each chord (I-VII).
+  Major/minor switching is done with the swap (~) button.
+
+- **Back buttons** allow chord modification (from left: 7th, ♭, dim, sus4).
+  N+/N- buttons change the instrument, K-/K+ buttons change the key.
+
+- **Front LEDs** show the current key, and the rightmost ♭ LED indicates a flat key.
+  **Back LEDs** light up according to instrument selection (1-6), modifier buttons (7th, ♭, dim), and ♭ button operation.
+
+- **Right slider** adjusts the arpeggio stroke. At the bottom, all 6 notes play simultaneously; sliding up plays notes sequentially.
+
+### Basic Operations
+1. **Key Setting**: Change key (C, Db, D...) with ByteButton2 buttons 6/7
+2. **Instrument Selection**: Change instrument with ByteButton2 buttons 4/5
+3. **Chord Play**: Play degree chords with ByteButton1 buttons 1-7
+4. **Modifier**: Hold ByteButton1 button 0 for minor
+
+### Instrument List
+1. **SteelGtr** - Steel String Guitar (GM#26)
+2. **JazzGtr** - Jazz Guitar (GM#27)
+3. **Piano** - Acoustic Piano (GM#1)
+4. **EPiano1** - Electric Piano (GM#5)
+5. **ChurchOrg** - Church Organ (GM#20) - 4 tones
+6. **Strings** - Strings Ensemble (GM#49) - 4 tones
+
+### Arpeggio Settings
+- **Stroke Time**: Adjustable 5-125ms via G9 analog value
+- **4-tone Mode**: Organ/Strings skip 2nd and 3rd notes
+
+## Hardware Configuration
+
+### Components and Roles
+
+| Component | Role/Usage | Connection/Notes | Documentation |
+|---|---|---|---|
+| **M5StampS3** | Main controller. Executes all control and performance logic. | Connects to all units, LEDs, MIDI sound board | [Official](https://docs.m5stack.com/en/core/stampS3) |
+| **M5Unit-ByteButton ×2** | 8 buttons ×2 (16 total). Chord/modifier/instrument/key control. | I2C (SDA:GPIO13, SCL:GPIO15)<br>Front:0x53, Back:0x4F | [Official](https://docs.m5stack.com/en/unit/byte_button) |
+| **Unit Synth (SAM2695)** | MIDI sound source. Outputs sound via MIDI signals. | Grove (TX:GPIO2, RX:GPIO1)<br>Standard MIDI baud rate:31250bps | [Official](https://docs.m5stack.com/en/unit/Unit-Synth) |
+| **Unit Fader** | Analog slider. Adjusts stroke time. Includes SK6812 LED. | G9:Analog input<br>LED is independently controlled | [Official](https://docs.m5stack.com/en/unit/fader) |
+| **StampS3 Grove BreakOut** | Grove expansion/power supply. Connects all units. | Direct to StampS3 | [Official](https://docs.m5stack.com/en/accessory/StampS3%20GroveBreakOut) |
+
+#### How to Use Each Unit
+- **ByteButton (Front)**: Chord play (I, II, III...) and minor (hold)
+- **ByteButton (Back)**: Instrument/key change, extended modifiers
+- **Unit Fader**: Adjust stroke time (arpeggio speed)
+- **Unit Synth**: Outputs sound via MIDI. Connect speaker/headphones
+- **LEDs**: Show performance state and startup test
+
+<div align="center">
+  <img src="./images/IMG_20250821_192535_1.jpg" alt="Unit Synth and Unit Fader (Back)" width="400" />
+  <br>Unit Synth and Unit Fader (Back)
+  <br><br>
+  <img src="./images/IMG_20250821_192602_1.jpg" alt="ByteButton1 (Front) and M5StampS3 (on StampS3 Grove BreakOut)" width="400" />
+  <br>ByteButton1 (Front) and M5StampS3 (on StampS3 Grove BreakOut)
+  <br><br>
+  <img src="./images/IMG_20250821_192613_1.jpg" alt="Unit Fader Front" width="400" />
+  <br>Unit Fader (Front)
+</div>
+
+#### Official Documentation
+- [M5StampS3](https://docs.m5stack.com/en/core/stampS3)
+- [M5Unit-ByteButton](https://docs.m5stack.com/en/unit/byte_button)
+- [Unit Synth (SAM2695)](https://docs.m5stack.com/en/unit/Unit-Synth)
+- [Unit Fader](https://docs.m5stack.com/en/unit/fader)
+- [StampS3 Grove BreakOut](https://docs.m5stack.com/en/accessory/StampS3%20GroveBreakOut)
+
+## Libraries Used
+
+```ini
+fastled/FastLED@^3.9.10                           # LED control
+https://github.com/m5stack/M5Unit-ByteButton.git  # Button input
+kantan-music                                       # Music theory API (local)
+```
+
+## Setup
+
+### 1. Environment Preparation
+```bash
+# Open as PlatformIO project
+pio project init --board m5stack-stamps3
+```
+
+### 2. Library Installation
+```bash
+pio lib install fastled/FastLED@^3.9.10
+pio lib install https://github.com/m5stack/M5Unit-ByteButton.git
+```
+
+### 3. Build & Upload
+```bash
+pio run --target upload --environment m5stack-stamps3
+```
+
+### 4. Operation Check
+```bash
+pio device monitor --environment m5stack-stamps3
+```
+
+## Technical Specifications
+
+### FreeRTOS Usage
+- **Main Task**: Button handling, MIDI control
+- **Arpeggio Task**: Asynchronous note sending (priority 1)
+- **Timers**: Automatic Note Off (6 independent timers)
+
+### Debounce Details
+- **Detection Interval**: 20ms
+- **State Management**: Raw → Stable → Event
+- **Memory Efficiency**: Bit operations for 8 buttons ×2 devices
+
+### MIDI Optimization
+- **Latency Reduction**: Immediate send via Serial1.flush()
+- **Duplication Prevention**: Cancel function via generation ID management
+- **Volume Control**: Master/channel volume set at startup
+
+## Development Environment
+
+- **Platform**: ESP32 (espressif32)
+- **Framework**: Arduino
+- **Build System**: PlatformIO
+
+## License
+
+This project includes KANTAN Music API. See `kantan-music/LICENSE_KANTAN_MUSIC.md` for details.
+
+KANTAN Music API original project: [InstaChord/KANTAN_Play_core](https://github.com/InstaChord/KANTAN_Play_core)
+
+Other parts are under the MIT License.
+
+[MIT License (LICENSE file)](./LICENSE)
+
+## Related Product Documentation
+
+- [M5StampS3 Documentation](https://docs.m5stack.com/en/core/stampS3)
+- [M5Unit-ByteButton Documentation](https://docs.m5stack.com/en/unit/byte_button)
+- [Unit Synth (SAM2695 MIDI sound source) Documentation](https://docs.m5stack.com/en/unit/Unit-Synth)
+- [Unit Fader (Analog Slider) Documentation](https://docs.m5stack.com/en/unit/fader)
+- [StampS3 Grove BreakOut Documentation](https://docs.m5stack.com/en/accessory/StampS3%20GroveBreakOut)
+
+---
+*Note: The English documentation above was translated with assistance from AI (GitHub Copilot).*
+
+---
+
+# DualByteStamPlay (日本語)
+unofficial fan-made project inspired by "KANTAN Play"
+
+## 重要事項
+
+本プロジェクトはKANTAN Play/InstaChordにインスパイアされたプロジェクトです。
+InstaChord株式会社、およびkantan-music公式プロジェクトではありませんyteStamPlay  
 unofficial fan-made project inspired by “KANTAN Play”
 
 ## 重要事項
