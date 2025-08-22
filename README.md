@@ -34,6 +34,8 @@ This device follows the chord theory of KANTAN-MUSIC.
 
 - **Right slider** adjusts the arpeggio stroke. At the bottom, all 6 notes play simultaneously; sliding up plays notes sequentially.
 
+- **Battery indicator** (left side of slider) displays battery level with green LEDs. Red LED warns of low battery (3.0-3.1V). Below 3.0V, the device automatically enters deep sleep mode to protect the battery.
+
 ### Basic Operations
 1. **Key Setting**: Change key (C, Db, D...) with ByteButton2 buttons 6/7
 2. **Instrument Selection**: Change instrument with ByteButton2 buttons 4/5
@@ -51,6 +53,18 @@ This device follows the chord theory of KANTAN-MUSIC.
 ### Arpeggio Settings
 - **Stroke Time**: Adjustable 5-125ms via G9 analog value
 - **4-tone Mode**: Organ/Strings skip 2nd and 3rd notes
+
+### Battery Management
+- **Battery Indicator**: 7 LEDs (left side of Unit Fader) display battery voltage levels
+  - LED 13: 4.05V+ (Green)
+  - LED 12: 3.90-4.05V (Green)
+  - LED 11: 3.75-3.90V (Green)
+  - LED 10: 3.60-3.75V (Green)
+  - LED 9: 3.45-3.60V (Green)
+  - LED 8: 3.30-3.45V (Green)
+  - LED 7: 3.15-3.30V (Green)
+  - LED 7: 3.0-3.15V (Red - Warning)
+- **Auto Shutdown**: Below 3.0V, device enters deep sleep mode for battery protection
 
 ## Hardware Configuration
 
@@ -205,6 +219,8 @@ M5社の各種パーツを使用しており、はんだ付け不要でくみ上
 - **右端のスライダー**は演奏の抑揚を調整します。
   最下部で6音を同時に、上にスライドすると6音が順次演奏されます。
 
+- **バッテリーインジケータ**（スライダーの左側）は緑色のLEDでバッテリーレベルを表示します。赤色LEDは低バッテリー警告（3.0-3.15V）を示します。3.0V以下になると、バッテリー保護のため自動的に深いスリープモードに移行します。
+
 ### 基本操作
 1. **キー設定**: ByteButton2のボタン6/7でキー変更（C, Db, D...）
 2. **音色選択**: ByteButton2のボタン4/5で音色変更
@@ -222,6 +238,18 @@ M5社の各種パーツを使用しており、はんだ付け不要でくみ上
 ### アルペジオ設定
 - **ストローク時間**: G9のアナログ値で5-125ms調整
 - **4音色モード**: オルガン・ストリングスでは2,3音をスキップ
+
+### バッテリー管理
+- **バッテリーインジケータ**: Unit Faderの7個のLED（左側）がバッテリー電圧レベルを表示
+  - LED 13: 4.05V以上（緑色）
+  - LED 12: 3.90-4.05V（緑色）
+  - LED 11: 3.75-3.90V（緑色）
+  - LED 10: 3.60-3.75V（緑色）
+  - LED 9: 3.45-3.60V（緑色）
+  - LED 8: 3.30-3.45V（緑色）
+  - LED 7: 3.15-3.30V（緑色）
+  - LED 7: 3.0-3.15V（赤色 - 警告）
+- **自動シャットダウン**: 3.0V以下になると、バッテリー保護のため深いスリープモードに移行
 
 ## ハードウェア構成
 

@@ -75,10 +75,11 @@ void updateRandomLEDs();
 // バッテリー監視設定
 #define BATTERY_SAMPLES 10           // 移動平均のサンプル数
 #define BATTERY_UPDATE_INTERVAL 30000 // LED更新間隔（30秒）
-static int batteryPercentSamples[BATTERY_SAMPLES] = {0};
+static float batteryVoltageSamples[BATTERY_SAMPLES] = {0.0};
 static int batterySampleIndex = 0;
 static unsigned long lastBatteryLEDUpdate = 0;
-static int displayedBatteryPercent = 100; // 表示用バッテリー残量
+static float displayedBatteryVoltage = 4.2; // 表示用バッテリー電圧
+static bool batteryInitialized = false; // 初期化フラグ
 
 // --- MIDIコントローラー状態変数 ---
 bool noteOnSent = false; // ノートオンが送信済みかを記録
@@ -363,29 +364,42 @@ void clearRandomLEDs() {
 void updateBatteryLEDs() {
   // G8からバッテリー電圧を読み取り
   int batteryValue = analogRead(BATTERY_ADC_PIN);
-  float Vfs_cal = 2.3580371295190536; // キャリブ済み定数 (4.16V @ ADC=2440)
-  int percent = constrain((int)(((((batteryValue / 4095.0) * Vfs_cal) / (51.0/(100.0+51.0))) - 3.2) / (4.2 - 3.2) * 100.0), 0, 100);
+  float Vfs_cal = 2.3096859379622803; // キャリブ済み定数
 
-  // バッテリー残量をシリアルに出力（高頻度）
-  Serial.printf("Battery ADC: %d, Battery Percent: %d%%\n", batteryValue, percent);
+  // 1) ADC → 電圧
+  float voltage = (batteryValue / 4095.0) * Vfs_cal / (51.0 / (100.0 + 51.0)); // V
 
-  // 移動平均に追加
-  batteryPercentSamples[batterySampleIndex] = percent;
-  batterySampleIndex = (batterySampleIndex + 1) % BATTERY_SAMPLES;
-  
-  // 移動平均を計算
-  int sum = 0;
-  for (int i = 0; i < BATTERY_SAMPLES; i++) {
-    sum += batteryPercentSamples[i];
-  }
-  int averagePercent = sum / BATTERY_SAMPLES;
-  
-  // 30秒間隔でLED表示を更新
-  unsigned long currentTime = millis();
-  if (currentTime - lastBatteryLEDUpdate >= BATTERY_UPDATE_INTERVAL) {
-    displayedBatteryPercent = averagePercent;
-    lastBatteryLEDUpdate = currentTime;
-    Serial.printf("LED Battery Update: %d%% (avg)\n", displayedBatteryPercent);
+  // バッテリー電圧をシリアルに出力（高頻度）
+  Serial.printf("Battery ADC: %d, voltage: %.2fV\n", batteryValue, voltage);
+
+  // 初回の場合は全サンプルを現在の電圧で初期化
+  if (!batteryInitialized) {
+    for (int i = 0; i < BATTERY_SAMPLES; i++) {
+      batteryVoltageSamples[i] = voltage;
+    }
+    batteryInitialized = true;
+    displayedBatteryVoltage = voltage; // 初回は即座に表示更新
+    lastBatteryLEDUpdate = millis();
+    Serial.printf("Battery initialized with %.2fV\n", voltage);
+  } else {
+    // 移動平均に追加
+    batteryVoltageSamples[batterySampleIndex] = voltage;
+    batterySampleIndex = (batterySampleIndex + 1) % BATTERY_SAMPLES;
+    
+    // 移動平均を計算
+    float sum = 0.0;
+    for (int i = 0; i < BATTERY_SAMPLES; i++) {
+      sum += batteryVoltageSamples[i];
+    }
+    float averageVoltage = sum / BATTERY_SAMPLES;
+    
+    // 30秒間隔でLED表示を更新
+    unsigned long currentTime = millis();
+    if (currentTime - lastBatteryLEDUpdate >= BATTERY_UPDATE_INTERVAL) {
+      displayedBatteryVoltage = averageVoltage;
+      lastBatteryLEDUpdate = currentTime;
+      Serial.printf("LED Battery Update: %.2fV (avg)\n", displayedBatteryVoltage);
+    }
   }
 
   // バッテリー容量（7-13）のLEDを消灯
@@ -393,18 +407,61 @@ void updateBatteryLEDs() {
     leds[i] = CRGB::Black;
   }
  
-  // 表示用バッテリー容量に応じてLED7-13のどれか一つを点灯
-  int ledIndex;
-  if (displayedBatteryPercent >= 90) {
-    ledIndex = 13; // 90%以上は13番
-  } else if (displayedBatteryPercent <= 10) {
-    ledIndex = 7;  // 10%以下は7番
+  // 表示用バッテリー電圧に応じてLED7-13のどれか一つを点灯
+  int ledIndex = -1;
+  CRGB ledColor = CRGB::Green;
+  
+  if (displayedBatteryVoltage >= 4.05) {
+    ledIndex = 13; // 4.05V以上
+  } else if (displayedBatteryVoltage >= 3.90) {
+    ledIndex = 12; // 3.90～4.05V
+  } else if (displayedBatteryVoltage >= 3.75) {
+    ledIndex = 11; // 3.75～3.90V
+  } else if (displayedBatteryVoltage >= 3.60) {
+    ledIndex = 10; // 3.60～3.75V
+  } else if (displayedBatteryVoltage >= 3.45) {
+    ledIndex = 9;  // 3.45～3.60V
+  } else if (displayedBatteryVoltage >= 3.30) {
+    ledIndex = 8;  // 3.30～3.45V
+  } else if (displayedBatteryVoltage >= 3.15) {
+    ledIndex = 7;  // 3.15～3.30V
+  } else if (displayedBatteryVoltage >= 3.0) {
+    ledIndex = 7;  // 3.0～3.15V
+    ledColor = CRGB::Red; // 赤色で警告
   } else {
-    // 11-89%の範囲を8-12に等分割
-    ledIndex = map(displayedBatteryPercent, 11, 89, 8, 12);
+    // 3.0V以下は強制シャットダウン（deep sleep）
+    Serial.println("Critical battery level! Entering deep sleep...");
+    
+    // 全ての音をオフ
+    allNotesOff();
+    Serial1.flush();
+    
+    // LEDを全消灯
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB::Black;
+    }
+    FastLED.show();
+    
+    // ByteButtonのLEDも消灯
+    for (int i = 0; i < 8; i++) {
+      buttonDevice1.setRGB888(i, 0x000000);
+      buttonDevice2.setRGB888(i, 0x000000);
+    }
+    
+    // WS2812も消灯
+    ws2812_leds[0] = CRGB::Black;
+    FastLED.show();
+    
+    delay(1000); // シャットダウンメッセージ表示時間
+    
+    // Deep sleepに入る（電源ボタンや外部割り込みで復帰可能）
+    esp_deep_sleep_start();
   }
   
-  leds[ledIndex] = CRGB::Green;
+  if (ledIndex >= 0) {
+    leds[ledIndex] = ledColor;
+  }
+  
   FastLED.show();
 }
 
