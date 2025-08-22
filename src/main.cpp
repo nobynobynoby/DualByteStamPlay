@@ -70,6 +70,15 @@ void updateRandomLEDs();
 
 // アナログデバイス設定
 #define ANALOG_SLIDER_PIN 9
+#define BATTERY_ADC_PIN 8
+
+// バッテリー監視設定
+#define BATTERY_SAMPLES 10           // 移動平均のサンプル数
+#define BATTERY_UPDATE_INTERVAL 30000 // LED更新間隔（30秒）
+static int batteryPercentSamples[BATTERY_SAMPLES] = {0};
+static int batterySampleIndex = 0;
+static unsigned long lastBatteryLEDUpdate = 0;
+static int displayedBatteryPercent = 100; // 表示用バッテリー残量
 
 // --- MIDIコントローラー状態変数 ---
 bool noteOnSent = false; // ノートオンが送信済みかを記録
@@ -333,20 +342,69 @@ void updateByteButton2LEDs() {
   }
 }
 
-// 14個のLEDをランダムカラーで点灯
+// 7個のLEDをランダムカラーで点灯（0-6）
 void updateRandomLEDs() {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = 0; i < 7; i++) {
     // ランダムな色相（0-255）、高い彩度（255）、適度な明度（150）
     leds[i] = CHSV(random(256), 255, 150);
   }
   FastLED.show();
 }
 
-// 14個のLEDを消灯
+// 7個のLEDを消灯（0-6）
 void clearRandomLEDs() {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = 0; i < 7; i++) {
     leds[i] = CRGB::Black;
   }
+  FastLED.show();
+}
+
+// バッテリーインジケータ（7-13）
+void updateBatteryLEDs() {
+  // G8からバッテリー電圧を読み取り
+  int batteryValue = analogRead(BATTERY_ADC_PIN);
+  float Vfs_cal = 2.3580371295190536; // キャリブ済み定数 (4.16V @ ADC=2440)
+  int percent = constrain((int)(((((batteryValue / 4095.0) * Vfs_cal) / (51.0/(100.0+51.0))) - 3.2) / (4.2 - 3.2) * 100.0), 0, 100);
+
+  // バッテリー残量をシリアルに出力（高頻度）
+  Serial.printf("Battery ADC: %d, Battery Percent: %d%%\n", batteryValue, percent);
+
+  // 移動平均に追加
+  batteryPercentSamples[batterySampleIndex] = percent;
+  batterySampleIndex = (batterySampleIndex + 1) % BATTERY_SAMPLES;
+  
+  // 移動平均を計算
+  int sum = 0;
+  for (int i = 0; i < BATTERY_SAMPLES; i++) {
+    sum += batteryPercentSamples[i];
+  }
+  int averagePercent = sum / BATTERY_SAMPLES;
+  
+  // 30秒間隔でLED表示を更新
+  unsigned long currentTime = millis();
+  if (currentTime - lastBatteryLEDUpdate >= BATTERY_UPDATE_INTERVAL) {
+    displayedBatteryPercent = averagePercent;
+    lastBatteryLEDUpdate = currentTime;
+    Serial.printf("LED Battery Update: %d%% (avg)\n", displayedBatteryPercent);
+  }
+
+  // バッテリー容量（7-13）のLEDを消灯
+  for (int i = 7; i < NUM_LEDS; i++) {
+    leds[i] = CRGB::Black;
+  }
+ 
+  // 表示用バッテリー容量に応じてLED7-13のどれか一つを点灯
+  int ledIndex;
+  if (displayedBatteryPercent >= 90) {
+    ledIndex = 13; // 90%以上は13番
+  } else if (displayedBatteryPercent <= 10) {
+    ledIndex = 7;  // 10%以下は7番
+  } else {
+    // 11-89%の範囲を8-12に等分割
+    ledIndex = map(displayedBatteryPercent, 11, 89, 8, 12);
+  }
+  
+  leds[ledIndex] = CRGB::Green;
   FastLED.show();
 }
 
@@ -394,6 +452,7 @@ void setup() {
 
   // アナログピン初期化
   pinMode(ANALOG_SLIDER_PIN, INPUT);
+  pinMode(BATTERY_ADC_PIN, INPUT);
 
   // MIDI用UART1初期化（MIDI標準ボーレート）
   Serial1.begin(31250, SERIAL_8N1, GROVE_RX, GROVE_TX);
@@ -652,6 +711,9 @@ void loop() {
   // ByteButton1とByteButton2のLEDを更新
   updateByteButtonLEDs();
   updateByteButton2LEDs();
+  
+  // バッテリーインジケータを更新
+  updateBatteryLEDs();
   
   delay(10); // ループ間隔
 }
